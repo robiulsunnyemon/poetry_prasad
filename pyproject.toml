@@ -5,7 +5,7 @@ description = ""
 authors = [
     {name = "robiulsunnyemon",email = "robiulsunyemon@gmail.com"}
 ]
-readme = "README.md"
+
 requires-python = "^3.11"
 dependencies = [
     "poetry-core (>=2.0.0)",
@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [tool.poetry]
-packages = [{include = "prasad", from = "src"}]
+packages = [{include = "prasad", from = "app"}]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
