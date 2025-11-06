@@ -15,10 +15,10 @@ RUN poetry config virtualenvs.create false \
     && poetry install --no-interaction --no-ansi --no-root
 
 # ---- Copy source code ----
-COPY ./app ./app
+COPY ./src ./src
 
 # ---- Expose port ----
 EXPOSE 8000
 
 # ---- Run FastAPI with Uvicorn ----
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "src.prasad.main:app", "--host", "0.0.0.0", "--port", "8000"]
