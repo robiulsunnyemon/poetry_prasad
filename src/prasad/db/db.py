@@ -14,12 +14,12 @@ from prasad.user.customer.model.customer import CustomerInfoModel, CustomerDetai
 from prasad.user.operator.model.operator import OperatorInfoModel
 import os
 
-MONGO_DETAILS = "mongodb://localhost:27017/prasad"
 
-#
-# load_dotenv()
-#
-# MONGO_DETAILS = os.getenv("MONGO_URI")
+
+
+load_dotenv()
+
+MONGO_DETAILS = os.getenv("MONGO_URI")
 
 async def init_db():
     client: AsyncIOMotorClient = AsyncIOMotorClient(MONGO_DETAILS)

@@ -7,6 +7,11 @@ from prasad.user.customer.model.customer import CustomerInfoModel,CustomerDetail
 from prasad.user.customer.schemas.customer import CustomerInfoCreate, CustomerInfoDetailsCreate, \
     CustomerServicesDetailsCreate, CustomerInfoResponse, CustomerInfoDetailsResponse, CustomerServicesDetailsResponse
 from prasad.images.image_services.image_services import ImageService
+from motor.motor_asyncio import AsyncIOMotorClient
+import gridfs
+from prasad.db.db import MONGO_DETAILS
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+
 
 
 
@@ -14,7 +19,12 @@ router = APIRouter(prefix="/customer", tags=["Customer"])
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_customer(customer: CustomerInfoCreate,file: UploadFile = File(...),user: dict = Depends(get_user_info)):
+async def create_customer(
+        customer: CustomerInfoCreate,
+        file: UploadFile = File(...),
+        user: dict = Depends(get_user_info)
+):
+    # User verification
     db_user = await UserModel.find_one(UserModel.id == user["user_id"])
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -22,31 +32,64 @@ async def create_customer(customer: CustomerInfoCreate,file: UploadFile = File(.
     if db_user.role != "customer":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="customer role not found")
 
-    new_customer = CustomerInfoModel(
-        user_id=db_user,
-        first_name=customer.first_name,
-        middle_name=customer.middle_name,
-        last_name=customer.last_name,
-        nickname=customer.nickname,
-        phone=customer.phone,
-        district=customer.district,
-        mondal=customer.mondal,
-        village=customer.village,
-        registered_by=customer.registered_by
-    )
-    await new_customer.insert()
-    metadata = {"user_id": str(db_user.id), "customer_id": str(new_customer.id)}
+    if not file:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
 
-    # ✅ Step 5: Save image
-    reason = ImageReason.PROFILE
-    image_url = await ImageService().save_image_from_api(file, reason, metadata)
+    # Validate file type
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must be an image"
+        )
 
-    # ✅ Step 6: Return response
-    return {
-        "message": "Customer created successfully",
-        "customer_id": str(new_customer.id),
-        "profile_image": image_url,
-    }
+    try:
+        # Upload image to GridFS
+        contents = await file.read()
+
+        # GridFS setup (add this in your database connection)
+        client: AsyncIOMotorClient = AsyncIOMotorClient(MONGO_DETAILS)
+        database: AsyncIOMotorDatabase = client.get_database()
+        fs = gridfs.GridFS(database)
+
+        # Store image in GridFS
+        file_id = fs.put(
+            contents,
+            filename=file.filename,
+            content_type=file.content_type,
+            user_id=str(user["user_id"])
+        )
+
+        # Create image URL
+        image_url = f"/api/customers/{str(file_id)}/image"
+
+        # Create customer with image URL
+        new_customer = CustomerInfoModel(
+            user_id=db_user,
+            first_name=customer.first_name,
+            middle_name=customer.middle_name,
+            last_name=customer.last_name,
+            nickname=customer.nickname,
+            phone=customer.phone,
+            district=customer.district,
+            mondal=customer.mondal,
+            village=customer.village,
+            registered_by=customer.registered_by,
+            image_url=image_url
+        )
+
+        await new_customer.insert()
+
+        return {
+            "message": "Customer created successfully",
+            "customer_id": str(new_customer.id),
+            "image_url": image_url
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating customer: {str(e)}"
+        )
 
 
 

@@ -17,6 +17,7 @@ class CustomerInfoModel(Document):
     mondal:str
     village:str
     registered_by:str
+    image_url:str
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
